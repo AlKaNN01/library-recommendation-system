@@ -38,10 +38,30 @@ export class ApiStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,
       architecture: lambda.Architecture.ARM_64,
+      environment: {
+        BOOKS_TABLE_NAME: props.booksTable.tableName,
+      },
     });
+
+    const getBook = new NodejsFunction(this, 'GetBookFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../lambda/get-book/index.ts'),
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      architecture: lambda.Architecture.ARM_64,
+      environment: {
+        BOOKS_TABLE_NAME: props.booksTable.tableName,
+      },
+    });
+    props.booksTable.grantReadData(getBooks);
+    props.booksTable.grantReadData(getBook);
 
     const getBooksResource = this.api.root.addResource('getBooks');
     getBooksResource.addMethod('GET', new apigateway.LambdaIntegration(getBooks));
+
+    const getBookByIdResource = getBooksResource.addResource('{id}');
+    getBookByIdResource.addMethod('GET', new apigateway.LambdaIntegration(getBook));
 
     new cdk.CfnOutput(this, 'ApiUrl', {
       value: this.api.url,
