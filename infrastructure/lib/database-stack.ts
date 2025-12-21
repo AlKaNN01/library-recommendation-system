@@ -32,6 +32,14 @@ export class DatabaseStack extends cdk.Stack {
     });
 
     this.readingListsTable.addGlobalSecondaryIndex({
+      indexName: 'userId-index',
+      partitionKey: {
+        name: 'userId',
+        type: dynamodb.AttributeType.STRING,
+      },
+    });
+
+    this.readingListsTable.addGlobalSecondaryIndex({
       indexName: 'id-index',
       partitionKey: {
         name: 'id',

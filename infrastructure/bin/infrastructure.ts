@@ -6,7 +6,7 @@ import { DatabaseStack } from '../lib/database-stack';
 const app = new cdk.App();
 const env = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
-  region: process.env.CDK_DEFAULT_REGION || 'us-east-1',
+  region: process.env.CDK_DEFAULT_REGION || 'eu-north-1',
 };
 
 const databaseStack = new DatabaseStack(app, 'LibraryDatabaseStack', { env });

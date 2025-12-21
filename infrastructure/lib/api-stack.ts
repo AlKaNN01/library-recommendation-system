@@ -63,6 +63,73 @@ export class ApiStack extends cdk.Stack {
     const getBookByIdResource = getBooksResource.addResource('{id}');
     getBookByIdResource.addMethod('GET', new apigateway.LambdaIntegration(getBook));
 
+    // Reading Lists Lambda Functions
+    const getReadingLists = new NodejsFunction(this, 'GetReadingListsFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../lambda/get-reading-lists/index.ts'),
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      architecture: lambda.Architecture.ARM_64,
+      environment: {
+        READING_LISTS_TABLE_NAME: props.readingListsTable.tableName,
+      },
+    });
+
+    const createReadingList = new NodejsFunction(this, 'CreateReadingListFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../lambda/create-reading-lists/index.ts'),
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      architecture: lambda.Architecture.ARM_64,
+      environment: {
+        READING_LISTS_TABLE_NAME: props.readingListsTable.tableName,
+      },
+    });
+
+    const updateReadingList = new NodejsFunction(this, 'UpdateReadingListFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../lambda/update-reading-lists/index.ts'),
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      architecture: lambda.Architecture.ARM_64,
+      environment: {
+        READING_LISTS_TABLE_NAME: props.readingListsTable.tableName,
+      },
+    });
+
+    const deleteReadingList = new NodejsFunction(this, 'DeleteReadingListFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../lambda/delete-reading-lists/index.ts'),
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      architecture: lambda.Architecture.ARM_64,
+      environment: {
+        READING_LISTS_TABLE_NAME: props.readingListsTable.tableName,
+      },
+    });
+
+    // Grant permissions
+    props.readingListsTable.grantReadData(getReadingLists);
+    props.readingListsTable.grantWriteData(createReadingList);
+    props.readingListsTable.grantReadWriteData(updateReadingList);
+    props.readingListsTable.grantReadWriteData(deleteReadingList);
+
+    // API Resources for Reading Lists
+    const readingListsResource = this.api.root.addResource('reading-lists');
+    readingListsResource.addMethod('GET', new apigateway.LambdaIntegration(getReadingLists));
+    readingListsResource.addMethod('POST', new apigateway.LambdaIntegration(createReadingList));
+
+    const readingListByIdResource = readingListsResource.addResource('{id}');
+    readingListByIdResource.addMethod('PUT', new apigateway.LambdaIntegration(updateReadingList));
+    readingListByIdResource.addMethod(
+      'DELETE',
+      new apigateway.LambdaIntegration(deleteReadingList)
+    );
+
     new cdk.CfnOutput(this, 'ApiUrl', {
       value: this.api.url,
       description: 'API Gateway URL',
