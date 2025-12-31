@@ -19,12 +19,20 @@ interface CreateReadingListRequest {
   description?: string;
   bookIds?: string[];
 }
+function getUserIdFromEvent(event:APIGatewayProxyEvent):string{
+  const claims = event.requestContext.authorizer?.claims;
+  if(claims){
+    return claims.sub || claims['cognito:username']
+  }
+  return event.queryStringParameters?.userId || 'anonymous';
+}
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   console.log('Event: ', JSON.stringify(event, null, 2));
 
   try {
     const body: CreateReadingListRequest = JSON.parse(event.body || '{}');
+    const userId = getUserIdFromEvent(event);
 
     if (!body.name || body.name.trim() === '') {
       return {
@@ -33,8 +41,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         body: JSON.stringify({ error: 'List name is required' }),
       };
     }
-
-    const userId = body.userId || '1';
+    
     const now = new Date().toISOString();
 
     const newList = {

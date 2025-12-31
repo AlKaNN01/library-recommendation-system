@@ -12,15 +12,20 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
 };
 
+function getUserIdFromEvent(event:APIGatewayProxyEvent):string{
+  const claims = event.requestContext.authorizer?.claims;
+  if(claims){
+    return claims.sub || claims['cognito:username']
+  }
+  return event.queryStringParameters?.userId || 'anonymous';
+}
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   console.log('Event: ', JSON.stringify(event, null, 2));
 
   try {
-    const userId = event.queryStringParameters?.userId || '1';
-
+    const userId = getUserIdFromEvent(event);
     const command = new QueryCommand({
       TableName: process.env.READING_LISTS_TABLE_NAME,
-      IndexName: 'userId-index', // GSI kullan
       KeyConditionExpression: 'userId = :userId',
       ExpressionAttributeValues: {
         ':userId': userId,

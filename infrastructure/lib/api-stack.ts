@@ -5,10 +5,12 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 import * as path from 'path';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
 
 export interface ApiStackProps extends cdk.StackProps {
   booksTable: dynamodb.ITable;
   readingListsTable: dynamodb.ITable;
+  userPool:cognito.UserPool,
 }
 
 export class ApiStack extends cdk.Stack {
@@ -31,6 +33,17 @@ export class ApiStack extends cdk.Stack {
         allowHeaders: ['Content-Type', 'Authorization'],
       },
     });
+
+    const cognitoAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(
+      this,
+      'CognitoAuthorizer',
+      {
+        cognitoUserPools:[props.userPool],
+        authorizerName: 'CognitoAuthorizer',
+        identitySource:'method.request.header.Autohorization',
+      }
+    );
+
     const getBooks = new NodejsFunction(this, 'GetBooksFuncition', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'handler',
@@ -120,14 +133,31 @@ export class ApiStack extends cdk.Stack {
 
     // API Resources for Reading Lists
     const readingListsResource = this.api.root.addResource('reading-lists');
-    readingListsResource.addMethod('GET', new apigateway.LambdaIntegration(getReadingLists));
-    readingListsResource.addMethod('POST', new apigateway.LambdaIntegration(createReadingList));
+    readingListsResource.addMethod('GET',new apigateway.LambdaIntegration(getReadingLists),
+    {
+        authorizer:cognitoAuthorizer,
+        authorizationType:apigateway.AuthorizationType.COGNITO,
+       
+    });
+    readingListsResource.addMethod('POST', new apigateway.LambdaIntegration(createReadingList),{
+        authorizer:cognitoAuthorizer,
+        authorizationType:apigateway.AuthorizationType.COGNITO,
+       
+    });
 
     const readingListByIdResource = readingListsResource.addResource('{id}');
-    readingListByIdResource.addMethod('PUT', new apigateway.LambdaIntegration(updateReadingList));
+    readingListByIdResource.addMethod('PUT', new apigateway.LambdaIntegration(updateReadingList),{
+        authorizer:cognitoAuthorizer,
+        authorizationType:apigateway.AuthorizationType.COGNITO,
+       
+    });
     readingListByIdResource.addMethod(
       'DELETE',
-      new apigateway.LambdaIntegration(deleteReadingList)
+      new apigateway.LambdaIntegration(deleteReadingList),{
+        authorizer:cognitoAuthorizer,
+        authorizationType:apigateway.AuthorizationType.COGNITO,
+       
+    }
     );
 
     new cdk.CfnOutput(this, 'ApiUrl', {
