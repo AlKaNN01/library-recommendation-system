@@ -10,7 +10,7 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 export interface ApiStackProps extends cdk.StackProps {
   booksTable: dynamodb.ITable;
   readingListsTable: dynamodb.ITable;
-  userPool:cognito.UserPool,
+  userPool: cognito.UserPool;
 }
 
 export class ApiStack extends cdk.Stack {
@@ -30,19 +30,21 @@ export class ApiStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: ['Content-Type', 'Authorization'],
+        allowHeaders: [
+          'Content-Type',
+          'X-Amz-Date',
+          'Authorization',
+          'X-Api-Key',
+          'X-Amz-Security-Token',
+        ],
       },
     });
 
-    const cognitoAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(
-      this,
-      'CognitoAuthorizer',
-      {
-        cognitoUserPools:[props.userPool],
-        authorizerName: 'CognitoAuthorizer',
-        identitySource:'method.request.header.Autohorization',
-      }
-    );
+    const cognitoAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'CognitoAuthorizer', {
+      cognitoUserPools: [props.userPool],
+      authorizerName: 'CognitoAuthorizer',
+      identitySource: 'method.request.header.Authorization',
+    });
 
     const getBooks = new NodejsFunction(this, 'GetBooksFuncition', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -133,31 +135,27 @@ export class ApiStack extends cdk.Stack {
 
     // API Resources for Reading Lists
     const readingListsResource = this.api.root.addResource('reading-lists');
-    readingListsResource.addMethod('GET',new apigateway.LambdaIntegration(getReadingLists),
-    {
-        authorizer:cognitoAuthorizer,
-        authorizationType:apigateway.AuthorizationType.COGNITO,
-       
+    readingListsResource.addMethod('GET', new apigateway.LambdaIntegration(getReadingLists), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
     });
-    readingListsResource.addMethod('POST', new apigateway.LambdaIntegration(createReadingList),{
-        authorizer:cognitoAuthorizer,
-        authorizationType:apigateway.AuthorizationType.COGNITO,
-       
+    readingListsResource.addMethod('POST', new apigateway.LambdaIntegration(createReadingList), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
     const readingListByIdResource = readingListsResource.addResource('{id}');
-    readingListByIdResource.addMethod('PUT', new apigateway.LambdaIntegration(updateReadingList),{
-        authorizer:cognitoAuthorizer,
-        authorizationType:apigateway.AuthorizationType.COGNITO,
-       
+    readingListByIdResource.addMethod('PUT', new apigateway.LambdaIntegration(updateReadingList), {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
     });
     readingListByIdResource.addMethod(
       'DELETE',
-      new apigateway.LambdaIntegration(deleteReadingList),{
-        authorizer:cognitoAuthorizer,
-        authorizationType:apigateway.AuthorizationType.COGNITO,
-       
-    }
+      new apigateway.LambdaIntegration(deleteReadingList),
+      {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
     );
 
     new cdk.CfnOutput(this, 'ApiUrl', {

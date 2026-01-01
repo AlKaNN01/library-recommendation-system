@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { Book } from '@/types';
 import { formatRating } from '@/utils/formatters';
 import { Button } from '@/components/common/Button';
+import { AddToListModal } from '@/components/books/AddToListModal';
 
 /**
  * BookCard component props
@@ -18,9 +20,15 @@ interface BookCardProps {
  */
 export function BookCard({ book }: BookCardProps) {
   const navigate = useNavigate();
+  const [isAddToListModalOpen, setIsAddToListModalOpen] = useState(false);
 
   const handleClick = () => {
     navigate(`/books/${book.id}`);
+  };
+
+  const handleAddToList = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsAddToListModalOpen(true);
   };
 
   return (
@@ -39,17 +47,30 @@ export function BookCard({ book }: BookCardProps) {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         <div className="absolute bottom-4 left-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="w-full"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClick();
-            }}
-          >
-            View Details
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="flex-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClick();
+              }}
+            >
+              View Details
+            </Button>
+            <Button variant="primary" size="sm" className="flex-1" onClick={handleAddToList}>
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
+              </svg>
+              Add to List
+            </Button>
+          </div>
         </div>
 
         {/* Floating Badge */}
@@ -85,6 +106,13 @@ export function BookCard({ book }: BookCardProps) {
           </div>
         </div>
       </div>
+
+      {/* Add to List Modal */}
+      <AddToListModal
+        isOpen={isAddToListModalOpen}
+        onClose={() => setIsAddToListModalOpen(false)}
+        book={book}
+      />
     </div>
   );
 }

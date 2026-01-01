@@ -19,22 +19,30 @@ interface UpdateReadingListRequest {
   description?: string;
   bookIds?: string[];
 }
-function getUserIdFromEvent(event:APIGatewayProxyEvent):string{
+function getUserIdFromEvent(event: APIGatewayProxyEvent): string {
   const claims = event.requestContext.authorizer?.claims;
-  if(claims){
-    return claims.sub || claims['cognito:username']
+  if (claims) {
+    return claims.sub || claims['cognito:username'];
   }
   return event.queryStringParameters?.userId || 'anonymous';
 }
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: CORS_HEADERS,
+      body: '',
+    };
+  }
   console.log('Event:', JSON.stringify(event, null, 2));
 
   try {
-    const body: UpdateReadingListRequest = JSON.parse(event.body || '{}');
+    const body = JSON.parse(event.body || '{}');
     const userId = getUserIdFromEvent(event);
+    const listId = event.pathParameters?.id;
 
-    if (!body.listId) {
+    if (!listId) {
       return {
         statusCode: 400,
         headers: CORS_HEADERS,
@@ -42,28 +50,41 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       };
     }
 
+    // Build update expression dynamically
+    const updateExpressions: string[] = [];
+    const expressionAttributeNames: Record<string, string> = {};
+    const expressionAttributeValues: Record<string, any> = {};
+
+    if (body.name !== undefined) {
+      updateExpressions.push('#name = :name');
+      expressionAttributeNames['#name'] = 'name';
+      expressionAttributeValues[':name'] = body.name;
+    }
+
+    if (body.description !== undefined) {
+      updateExpressions.push('description = :desc');
+      expressionAttributeValues[':desc'] = body.description;
+    }
+
+    if (body.bookIds !== undefined) {
+      updateExpressions.push('bookIds = :bookIds');
+      expressionAttributeValues[':bookIds'] = body.bookIds;
+    }
+
+    // Always update updatedAt
+    updateExpressions.push('updatedAt = :updatedAt');
+    expressionAttributeValues[':updatedAt'] = new Date().toISOString();
 
     const command = new UpdateCommand({
       TableName: process.env.READING_LISTS_TABLE_NAME,
       Key: {
+        id: listId,
         userId: userId,
-        id: body.listId,
       },
-      UpdateExpression: `
-        SET #name = :name,
-            description = :desc,
-            bookIds = :bookIds,
-            updatedAt = :updatedAt
-      `,
-      ExpressionAttributeNames: {
-        '#name': 'name', // "name" DynamoDB reserved word
-      },
-      ExpressionAttributeValues: {
-        ':name': body.name,
-        ':desc': body.description || '',
-        ':bookIds': body.bookIds || [],
-        ':updatedAt': new Date().toISOString(),
-      },
+      UpdateExpression: `SET ${updateExpressions.join(', ')}`,
+      ExpressionAttributeNames:
+        Object.keys(expressionAttributeNames).length > 0 ? expressionAttributeNames : undefined,
+      ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: 'ALL_NEW',
     });
 

@@ -1,5 +1,5 @@
 import { Book, ReadingList, Review, Recommendation } from '@/types';
-import { mockBooks, mockReadingLists } from './mockData';
+import { mockBooks } from './mockData';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 /**
@@ -44,33 +44,31 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 // TODO: Uncomment this after deploying API Gateway (Week 2, Day 4)
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
-/**
- * TODO: Implement this function in Week 3, Day 4
- *
- * This function gets the JWT token from Cognito and adds it to API requests.
- *
- * Implementation:
- * 1. Import: import { fetchAuthSession } from 'aws-amplify/auth';
- * 2. Get session: const session = await fetchAuthSession();
- * 3. Extract token: const token = session.tokens?.idToken?.toString();
- * 4. Return headers with Authorization: Bearer {token}
- *
- * See IMPLEMENTATION_GUIDE.md - Week 3, Day 5-7 for complete code.
- */
-// async function getAuthHeaders() {
-//   try {
-//     const session = await fetchAuthSession();
-//     const token = session.tokens?.idToken?.toString();
-//     return {
-//       'Authorization': `Bearer ${token}`,
-//       'Content-Type': 'application/json'
-//     };
-//   } catch {
-//     return {
-//       'Content-Type': 'application/json'
-//     };
-//   }
-// }
+import { fetchAuthSession } from 'aws-amplify/auth';
+
+async function getAuthHeaders() {
+  try {
+    const session = await fetchAuthSession();
+    const token = session.tokens?.idToken?.toString();
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.warn('Token bulunamadı!');
+    }
+
+    return headers;
+  } catch (error) {
+    console.error('Token alma hatası:', error);
+    return {
+      'Content-Type': 'application/json',
+    };
+  }
+}
 
 /**
  * Get all books from the catalog
@@ -282,7 +280,12 @@ export async function getRecommendations(): Promise<Recommendation[]> {
  */
 export async function getReadingLists(): Promise<ReadingList[]> {
   if (API_BASE_URL) {
-    const response = await fetch(`${API_BASE_URL}/reading-lists?user-id=1`);
+    const headers = await getAuthHeaders();
+
+    // Giriş yapılmışsa token'dan user ID alınacak, yapılmamışsa backend hata döndürecek
+    const response = await fetch(`${API_BASE_URL}/reading-lists`, {
+      headers,
+    });
 
     if (!response.ok) {
       throw new Error('Failed to fetch reading lists');
@@ -320,11 +323,10 @@ export async function createReadingList(
   list: Omit<ReadingList, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<ReadingList> {
   if (API_BASE_URL) {
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/reading-lists`, {
       method: 'POST',
-      headers: {
-        'Content-Type ': 'application/json',
-      },
+      headers,
       body: JSON.stringify(list),
     });
 
@@ -345,11 +347,10 @@ export async function updateReadingList(
   list: Partial<ReadingList>
 ): Promise<ReadingList> {
   if (API_BASE_URL) {
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/reading-lists/${id}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type ': 'application/json',
-      },
+      headers,
       body: JSON.stringify({ ...list, userId: list.userId || '1' }),
     });
 
@@ -367,13 +368,24 @@ export async function updateReadingList(
  */
 export async function deleteReadingList(id: string, userId: string = '1'): Promise<void> {
   if (API_BASE_URL) {
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/reading-lists/${id}?userId=${userId}`, {
       method: 'DELETE',
+      headers,
     });
     if (!response.ok && response.status !== 204) {
       throw new Error('Failed to delete a reading list');
     }
-    return response.json();
+    // Don't try to parse JSON for 204 No Content responses
+    if (response.status === 204) {
+      return;
+    }
+    // Only parse JSON if there's content
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return response.json();
+    }
+    return;
   }
   throw new Error('API BASE URL is broken!');
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/common/Button';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { AddToListModal } from '@/components/books/AddToListModal';
 import { getBook } from '@/services/api';
 import { Book } from '@/types';
 import { formatRating } from '@/utils/formatters';
@@ -15,6 +16,7 @@ export function BookDetail() {
   const navigate = useNavigate();
   const [book, setBook] = useState<Book | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAddToListModalOpen, setIsAddToListModalOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -39,9 +41,9 @@ export function BookDetail() {
     }
   };
 
-  // TODO: Implement add to reading list functionality
+  // Handle add to reading list
   const handleAddToList = () => {
-    alert('Add to reading list functionality coming soon!');
+    setIsAddToListModalOpen(true);
   };
 
   if (isLoading) {
@@ -213,6 +215,15 @@ export function BookDetail() {
           </div>
         </div>
       </div>
+
+      {/* Add to List Modal */}
+      {book && (
+        <AddToListModal
+          isOpen={isAddToListModalOpen}
+          onClose={() => setIsAddToListModalOpen(false)}
+          book={book}
+        />
+      )}
     </div>
   );
 }

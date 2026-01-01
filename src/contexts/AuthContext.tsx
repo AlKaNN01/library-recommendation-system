@@ -7,6 +7,7 @@ import {
   signOut,
   getCurrentUser,
   confirmSignUp as amplifyConfirmSignUp,
+  resendSignUpCode,
   fetchAuthSession,
 } from 'aws-amplify/auth';
 
@@ -21,6 +22,7 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   confirmSignUp: (email: string, code: string) => Promise<void>;
+  resendVerificationCode: (email: string) => Promise<void>;
   getAuthToken: () => Promise<string | null>;
 }
 
@@ -141,6 +143,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const resendVerificationCodeHandler = async (email: string) => {
+    setIsLoading(true);
+    try {
+      await resendSignUpCode({ username: email });
+      console.log('Verification code resent successfully');
+    } catch (error) {
+      console.error('Resend verification code error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getAuthToken = async (): Promise<string | null> => {
     try {
       const session = await fetchAuthSession();
@@ -159,6 +174,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     signup,
     confirmSignUp: confirmSignUpHandler,
+    resendVerificationCode: resendVerificationCodeHandler,
     getAuthToken,
   };
 

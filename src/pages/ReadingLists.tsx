@@ -3,8 +3,8 @@ import { Button } from '@/components/common/Button';
 import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { getReadingLists, createReadingList } from '@/services/api';
-import { ReadingList } from '@/types';
+import { getReadingLists, createReadingList, getBooks, deleteReadingList } from '@/services/api';
+import { ReadingList, Book } from '@/types';
 import { formatDate } from '@/utils/formatters';
 import { handleApiError, showSuccess } from '@/utils/errorHandling';
 
@@ -13,26 +13,38 @@ import { handleApiError, showSuccess } from '@/utils/errorHandling';
  */
 export function ReadingLists() {
   const [lists, setLists] = useState<ReadingList[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [listToDelete, setListToDelete] = useState<ReadingList | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [newListDescription, setNewListDescription] = useState('');
 
   useEffect(() => {
-    loadLists();
+    loadData();
   }, []);
 
-  const loadLists = async () => {
+  const loadData = async () => {
     setIsLoading(true);
     try {
-      // TODO: Replace with DynamoDB query
-      const data = await getReadingLists();
-      setLists(data);
+      // Load both lists and books
+      const [listsData, booksData] = await Promise.all([getReadingLists(), getBooks()]);
+      setLists(listsData);
+      setBooks(booksData);
     } catch (error) {
       handleApiError(error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Helper function to get book titles for a list
+  const getBookTitlesForList = (bookIds: string[]): string[] => {
+    return bookIds
+      .map((bookId) => books.find((book) => book.id === bookId)?.title)
+      .filter((title): title is string => title !== undefined);
   };
 
   const handleCreateList = async () => {
@@ -42,7 +54,6 @@ export function ReadingLists() {
     }
 
     try {
-      // TODO: Replace with DynamoDB put operation
       const newList = await createReadingList({
         userId: '1', // TODO: Get from auth context
         name: newListName,
@@ -57,6 +68,34 @@ export function ReadingLists() {
     } catch (error) {
       handleApiError(error);
     }
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, list: ReadingList) => {
+    e.stopPropagation(); // Prevent card click
+    setListToDelete(list);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!listToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteReadingList(listToDelete.id, listToDelete.userId);
+      setLists(lists.filter((list) => list.id !== listToDelete.id));
+      setIsDeleteModalOpen(false);
+      setListToDelete(null);
+      showSuccess(`"${listToDelete.name}" deleted successfully!`);
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setIsDeleteModalOpen(false);
+    setListToDelete(null);
   };
 
   if (isLoading) {
@@ -105,19 +144,136 @@ export function ReadingLists() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {lists.map((list) => (
-              <div
-                key={list.id}
-                className="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-xl hover:border-blue-300 transition-all duration-300 cursor-pointer"
-              >
-                <h3 className="text-xl font-bold text-slate-900 mb-2">{list.name}</h3>
-                <p className="text-slate-600 mb-4 line-clamp-2">{list.description}</p>
-                <div className="flex items-center justify-between text-sm text-slate-500">
-                  <span>{list.bookIds.length} books</span>
-                  <span>Created {formatDate(list.createdAt)}</span>
+            {lists.map((list) => {
+              const bookTitles = getBookTitlesForList(list.bookIds);
+
+              return (
+                <div
+                  key={list.id}
+                  className="glass-effect rounded-2xl shadow-lg border border-white/20 p-6 hover:shadow-xl hover:border-violet-300 transition-all duration-300 cursor-pointer hover-glow group"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <h3 className="text-xl font-bold text-slate-900">{list.name}</h3>
+                    <div className="flex items-center space-x-2">
+                      <span className="badge-modern text-xs">
+                        {list.bookIds.length} book{list.bookIds.length !== 1 ? 's' : ''}
+                      </span>
+                      {/* Delete Button */}
+                      <button
+                        onClick={(e) => handleDeleteClick(e, list)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded-lg hover:bg-red-100 text-red-500 hover:text-red-700"
+                        title="Delete list"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {list.description && (
+                    <p className="text-slate-600 mb-4 line-clamp-2">{list.description}</p>
+                  )}
+
+                  {/* Book Titles */}
+                  <div className="mb-4">
+                    {bookTitles.length > 0 ? (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold text-slate-700 flex items-center">
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 11.477 5.754 11 7.5 11s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 11.477 18.246 11 16.5 11c-1.746 0-3.332.477-4.5 1.253"
+                            />
+                          </svg>
+                          Books in this list:
+                        </h4>
+                        <div className="max-h-32 overflow-y-auto">
+                          <ul className="space-y-1">
+                            {bookTitles.slice(0, 5).map((title, index) => (
+                              <li key={index} className="text-sm text-slate-600 flex items-center">
+                                <span className="w-1.5 h-1.5 bg-violet-400 rounded-full mr-2 flex-shrink-0"></span>
+                                <span className="line-clamp-1">{title}</span>
+                              </li>
+                            ))}
+                            {bookTitles.length > 5 && (
+                              <li className="text-xs text-slate-500 italic pl-3.5">
+                                +{bookTitles.length - 5} more book
+                                {bookTitles.length - 5 !== 1 ? 's' : ''}
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <svg
+                          className="w-8 h-8 text-slate-300 mx-auto mb-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 11.477 5.754 11 7.5 11s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 11.477 18.246 11 16.5 11c-1.746 0-3.332.477-4.5 1.253"
+                          />
+                        </svg>
+                        <p className="text-sm text-slate-400">No books added yet</p>
+                        <p className="text-xs text-slate-400">
+                          Start adding books to see them here
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between text-xs text-slate-500 pt-4 border-t border-slate-200">
+                    <span>Created {formatDate(list.createdAt)}</span>
+                    <div className="flex items-center">
+                      <svg
+                        className="w-3 h-3 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                      <span>View Details</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -152,6 +308,73 @@ export function ReadingLists() {
               </Button>
               <Button variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-1">
                 Cancel
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal isOpen={isDeleteModalOpen} onClose={handleDeleteCancel} title="Delete Reading List">
+          <div className="space-y-4">
+            {/* Warning Icon */}
+            <div className="flex items-center justify-center w-16 h-16 mx-auto bg-red-100 rounded-full">
+              <svg
+                className="w-8 h-8 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                />
+              </svg>
+            </div>
+
+            {/* Confirmation Text */}
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                Are you sure you want to delete this list?
+              </h3>
+              <p className="text-slate-600 mb-4">
+                You're about to delete <strong>"{listToDelete?.name}"</strong>
+                {listToDelete && listToDelete.bookIds.length > 0 && (
+                  <span>
+                    {' '}
+                    which contains {listToDelete.bookIds.length} book
+                    {listToDelete.bookIds.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+                . This action cannot be undone.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                onClick={handleDeleteCancel}
+                className="flex-1"
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleDeleteConfirm}
+                className="flex-1 bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <div className="flex items-center">
+                    <LoadingSpinner size="sm" />
+                    <span className="ml-2">Deleting...</span>
+                  </div>
+                ) : (
+                  'Delete List'
+                )}
               </Button>
             </div>
           </div>

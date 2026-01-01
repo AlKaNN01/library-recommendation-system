@@ -11,22 +11,29 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
 };
 
-function getUserIdFromEvent(event:APIGatewayProxyEvent):string{
+function getUserIdFromEvent(event: APIGatewayProxyEvent): string {
   const claims = event.requestContext.authorizer?.claims;
-  if(claims){
-    return claims.sub || claims['cognito:username']
+  if (claims) {
+    return claims.sub || claims['cognito:username'];
   }
   return event.queryStringParameters?.userId || 'anonymous';
 }
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: CORS_HEADERS,
+      body: '',
+    };
+  }
   console.log('Event:', JSON.stringify(event, null, 2));
 
   try {
-    const body = JSON.parse(event.body || '{}');
     const userId = getUserIdFromEvent(event);
+    const listId = event.pathParameters?.id;
 
-    if (!body.listId) {
+    if (!listId) {
       return {
         statusCode: 400,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
@@ -34,13 +41,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       };
     }
 
-    
-
     const command = new DeleteCommand({
       TableName: process.env.READING_LISTS_TABLE_NAME,
       Key: {
+        id: listId,
         userId: userId,
-        id: body.listId,
       },
     });
 

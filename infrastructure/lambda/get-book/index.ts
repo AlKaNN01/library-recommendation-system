@@ -12,6 +12,14 @@ const CORS_HEADERS = {
 };
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: CORS_HEADERS,
+      body: '',
+    };
+  }
   console.log('Event: ', JSON.stringify(event, null, 2));
 
   try {
