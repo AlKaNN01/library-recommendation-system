@@ -23,6 +23,7 @@
   "dependencies": {
     "@aws-cdk/aws-lambda": "^1.203.0",
     "@aws-cdk/aws-lambda-nodejs": "^1.203.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.962.0",
     "@aws-sdk/client-dynamodb": "^3.948.0",
     "@aws-sdk/lib-dynamodb": "^3.948.0",
     "aws-cdk-lib": "2.232.1",

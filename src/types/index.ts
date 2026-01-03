@@ -46,6 +46,8 @@ export interface Recommendation {
   bookId: string;
   reason: string;
   confidence: number;
+  title?: string;
+  author?: string;
 }
 
 export interface AuthState {

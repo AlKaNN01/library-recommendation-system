@@ -232,29 +232,32 @@ export async function deleteBook(): Promise<void> {
  *
  * Documentation: https://docs.aws.amazon.com/bedrock/latest/userguide/
  */
-export async function getRecommendations(): Promise<Recommendation[]> {
-  // TODO: Remove this mock implementation after deploying Bedrock Lambda
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const mockRecommendations: Recommendation[] = [
-        {
-          id: '1',
-          bookId: '1',
-          reason:
-            'Based on your interest in philosophical fiction, this book explores themes of choice and regret.',
-          confidence: 0.92,
-        },
-        {
-          id: '2',
-          bookId: '2',
-          reason:
-            'If you enjoy science-based thrillers, this space adventure combines humor with hard science.',
-          confidence: 0.88,
-        },
-      ];
-      resolve(mockRecommendations);
-    }, 1000);
+export async function getRecommendations(query: string): Promise<Recommendation[]> {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE_URL}/recommendations`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ query }),
   });
+  if (!response.ok) throw new Error('Failed to get recommendations');
+  const data = await response.json();
+
+  // Define the expected structure from Bedrock API
+  interface BedrockRecommendation {
+    title: string;
+    author: string;
+    reason: string;
+    confidence: number;
+  }
+
+  return data.recommendations.map((rec: BedrockRecommendation, index: number) => ({
+    id: `rec-${index}`,
+    bookId: `book-${index}`,
+    reason: rec.reason,
+    confidence: rec.confidence,
+    title: rec.title,
+    author: rec.author,
+  }));
 }
 
 /**

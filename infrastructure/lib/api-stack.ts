@@ -6,6 +6,7 @@ import { Construct } from 'constructs';
 import * as path from 'path';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
 export interface ApiStackProps extends cdk.StackProps {
   booksTable: dynamodb.ITable;
@@ -152,6 +153,40 @@ export class ApiStack extends cdk.Stack {
     readingListByIdResource.addMethod(
       'DELETE',
       new apigateway.LambdaIntegration(deleteReadingList),
+      {
+        authorizer: cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // AI Recommendations Lambda Function
+    const getRecommendations = new NodejsFunction(this, 'GetRecommendationsFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../lambda/get-recommendations/index.ts'),
+      timeout: cdk.Duration.seconds(30), // Longer timeout for AI calls
+      memorySize: 512, // More memory for AI processing
+      architecture: lambda.Architecture.ARM_64,
+      // AWS_REGION is automatically available in Lambda runtime
+    });
+
+    // Grant Bedrock permissions to the recommendations Lambda
+    getRecommendations.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+        resources: [
+          `arn:aws:bedrock:${this.region}:607104514209:inference-profile/eu.anthropic.claude-3-7-sonnet-20250219-v1:0`,
+          `arn:aws:bedrock:*::foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0`,
+        ],
+      })
+    );
+
+    // API Resource for Recommendations
+    const recommendationsResource = this.api.root.addResource('recommendations');
+    recommendationsResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(getRecommendations),
       {
         authorizer: cognitoAuthorizer,
         authorizationType: apigateway.AuthorizationType.COGNITO,
