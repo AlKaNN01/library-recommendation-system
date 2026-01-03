@@ -18,9 +18,9 @@ phases:
       - npm run build
   post_build:
     commands:
-      - echo Invalidating CloudFront cache...
-      - aws cloudfront create-invalidation --distribution-id ECRP51AK9PYZS --paths "/*"
-      - echo Deployment completed successfully!
+      - echo Build completed successfully!
+      # CloudFront invalidation temporarily disabled due to permissions
+      # - aws cloudfront create-invalidation --distribution-id ECRP51AK9PYZS --paths "/*"
 artifacts:
   files:
     - '**/*'
