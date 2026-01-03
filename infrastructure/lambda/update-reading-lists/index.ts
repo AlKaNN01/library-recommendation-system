@@ -38,7 +38,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   console.log('Event:', JSON.stringify(event, null, 2));
 
   try {
-    const body = JSON.parse(event.body || '{}');
+    const body: UpdateReadingListRequest = JSON.parse(event.body || '{}');
     const userId = getUserIdFromEvent(event);
     const listId = event.pathParameters?.id;
 
@@ -53,7 +53,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     // Build update expression dynamically
     const updateExpressions: string[] = [];
     const expressionAttributeNames: Record<string, string> = {};
-    const expressionAttributeValues: Record<string, any> = {};
+    const expressionAttributeValues: Record<string, string | string[]> = {};
 
     if (body.name !== undefined) {
       updateExpressions.push('#name = :name');
