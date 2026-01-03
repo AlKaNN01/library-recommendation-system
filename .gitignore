@@ -45,6 +45,11 @@ lerna-debug.log*
 .aws-sam/
 samconfig.toml
 
+# CDK
+infrastructure/cdk.out/
+infrastructure/cdk.out.*/
+infrastructure/*.json
+
 # Misc
 *.orig
 .eslintcache

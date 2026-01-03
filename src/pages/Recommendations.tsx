@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/common/Button';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { BookGrid } from '@/components/books/BookGrid';
-import { getRecommendations, getBook } from '@/services/api';
-import { Book, Recommendation } from '@/types';
+import { getRecommendations } from '@/services/api';
+import { Recommendation } from '@/types';
 import { handleApiError } from '@/utils/errorHandling';
 
 /**
@@ -12,7 +11,6 @@ import { handleApiError } from '@/utils/errorHandling';
 export function Recommendations() {
   const [query, setQuery] = useState('');
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [recommendedBooks, setRecommendedBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const exampleQueries = [
@@ -33,10 +31,6 @@ export function Recommendations() {
       // Get AI-powered recommendations from Bedrock
       const recs = await getRecommendations(query);
       setRecommendations(recs);
-
-      // For AI recommendations, we don't need to fetch book details
-      // since the AI provides title and author directly
-      setRecommendedBooks([]);
     } catch (error) {
       handleApiError(error);
     } finally {
@@ -139,7 +133,7 @@ export function Recommendations() {
 
             {/* Display AI recommendations */}
             <div className="space-y-6 mb-12">
-              {recommendations.map((rec, index) => (
+              {recommendations.map((rec) => (
                 <div
                   key={rec.id}
                   className="glass-effect rounded-2xl shadow-xl border border-white/20 p-6 hover-glow transition-all duration-300"

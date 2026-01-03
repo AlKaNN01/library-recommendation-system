@@ -12,6 +12,7 @@ export interface ApiStackProps extends cdk.StackProps {
   booksTable: dynamodb.ITable;
   readingListsTable: dynamodb.ITable;
   userPool: cognito.UserPool;
+  frontendUrl?: string; // CloudFront URL for CORS
 }
 
 export class ApiStack extends cdk.Stack {
@@ -29,7 +30,9 @@ export class ApiStack extends cdk.Stack {
       restApiName: ' Library Recommendation System API',
       description: 'This is the API for the final project of the course',
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowOrigins: props.frontendUrl
+          ? [props.frontendUrl, 'http://localhost:5173'] // CloudFront + local dev
+          : apigateway.Cors.ALL_ORIGINS, // Fallback for development
         allowMethods: apigateway.Cors.ALL_METHODS,
         allowHeaders: [
           'Content-Type',
