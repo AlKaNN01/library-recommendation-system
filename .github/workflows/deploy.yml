@@ -1,10 +1,11 @@
 name: Deploy Frontend to AWS
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+# Disabled - Using AWS CodePipeline instead
+# on:
+#   push:
+#     branches: [main]
+#   pull_request:
+#     branches: [main]
 
 jobs:
   deploy:

@@ -1,22 +1,26 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/common/Button';
 import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { getReadingLists, createReadingList, getBooks, deleteReadingList } from '@/services/api';
 import { ReadingList, Book } from '@/types';
-import { formatDate } from '@/utils/formatters';
+import { formatDate, formatRating } from '@/utils/formatters';
 import { handleApiError, showSuccess } from '@/utils/errorHandling';
 
 /**
  * ReadingLists page component
  */
 export function ReadingLists() {
+  const navigate = useNavigate();
   const [lists, setLists] = useState<ReadingList[]>([]);
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isViewDetailsModalOpen, setIsViewDetailsModalOpen] = useState(false);
+  const [selectedList, setSelectedList] = useState<ReadingList | null>(null);
   const [listToDelete, setListToDelete] = useState<ReadingList | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [newListName, setNewListName] = useState('');
@@ -45,6 +49,23 @@ export function ReadingLists() {
     return bookIds
       .map((bookId) => books.find((book) => book.id === bookId)?.title)
       .filter((title): title is string => title !== undefined);
+  };
+
+  // Helper function to get full book objects for a list
+  const getBooksForList = (bookIds: string[]): Book[] => {
+    return bookIds
+      .map((bookId) => books.find((book) => book.id === bookId))
+      .filter((book): book is Book => book !== undefined);
+  };
+
+  const handleViewDetails = (e: React.MouseEvent, list: ReadingList) => {
+    e.stopPropagation();
+    setSelectedList(list);
+    setIsViewDetailsModalOpen(true);
+  };
+
+  const handleBookClick = (bookId: string) => {
+    navigate(`/books/${bookId}`);
   };
 
   const handleCreateList = async () => {
@@ -248,7 +269,11 @@ export function ReadingLists() {
                   {/* Footer */}
                   <div className="flex items-center justify-between text-xs text-slate-500 pt-4 border-t border-slate-200">
                     <span>Created {formatDate(list.createdAt)}</span>
-                    <div className="flex items-center">
+                    <button
+                      onClick={(e) => handleViewDetails(e, list)}
+                      className="flex items-center hover:text-violet-600 transition-colors cursor-pointer"
+                      disabled={list.bookIds.length === 0}
+                    >
                       <svg
                         className="w-3 h-3 mr-1"
                         fill="none"
@@ -269,7 +294,7 @@ export function ReadingLists() {
                         />
                       </svg>
                       <span>View Details</span>
-                    </div>
+                    </button>
                   </div>
                 </div>
               );
@@ -377,6 +402,97 @@ export function ReadingLists() {
                 )}
               </Button>
             </div>
+          </div>
+        </Modal>
+
+        {/* View Details Modal */}
+        <Modal
+          isOpen={isViewDetailsModalOpen}
+          onClose={() => setIsViewDetailsModalOpen(false)}
+          title={selectedList ? `Books in "${selectedList.name}"` : 'Book Details'}
+        >
+          <div className="space-y-4">
+            {selectedList && (
+              <>
+                {selectedList.description && (
+                  <p className="text-slate-600 mb-4">{selectedList.description}</p>
+                )}
+
+                {getBooksForList(selectedList.bookIds).length === 0 ? (
+                  <div className="text-center py-8">
+                    <svg
+                      className="w-12 h-12 text-slate-300 mx-auto mb-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 11.477 5.754 11 7.5 11s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 11.477 18.246 11 16.5 11c-1.746 0-3.332.477-4.5 1.253"
+                      />
+                    </svg>
+                    <p className="text-slate-500">No books in this list yet</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                    {getBooksForList(selectedList.bookIds).map((book) => (
+                      <div
+                        key={book.id}
+                        onClick={() => handleBookClick(book.id)}
+                        className="bg-white rounded-lg border border-slate-200 p-4 hover:shadow-md hover:border-violet-300 transition-all cursor-pointer group"
+                      >
+                        <div className="flex space-x-3">
+                          <img
+                            src={book.coverImage}
+                            alt={book.title}
+                            className="w-16 h-20 object-cover rounded-md shadow-sm group-hover:shadow-md transition-shadow"
+                            onError={(e) => {
+                              e.currentTarget.src =
+                                'https://via.placeholder.com/64x80?text=No+Cover';
+                            }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-slate-900 text-sm line-clamp-2 mb-1">
+                              {book.title}
+                            </h4>
+                            <p className="text-xs text-slate-600 mb-2">by {book.author}</p>
+
+                            <div className="flex items-center space-x-2 mb-2">
+                              <div className="flex items-center">
+                                <svg
+                                  className="w-3 h-3 text-amber-400 mr-1"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                                <span className="text-xs font-medium text-slate-700">
+                                  {formatRating(book.rating)}
+                                </span>
+                              </div>
+                              <span className="text-xs text-slate-500">•</span>
+                              <span className="text-xs text-slate-500">{book.genre}</span>
+                            </div>
+
+                            <p className="text-xs text-slate-600 line-clamp-2">
+                              {book.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-4 border-t border-slate-200">
+                  <Button variant="secondary" onClick={() => setIsViewDetailsModalOpen(false)}>
+                    Close
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </Modal>
       </div>

@@ -1,5 +1,4 @@
 version: 0.2
-
 phases:
   install:
     runtime-versions:
@@ -7,16 +6,25 @@ phases:
     commands:
       - echo Installing dependencies...
       - npm install
+  pre_build:
+    commands:
+      - echo Running tests...
+      - npm run test -- --run
+      - echo Running linter...
+      - npm run lint
   build:
     commands:
       - echo Building application...
       - npm run build
-
+  post_build:
+    commands:
+      - echo Invalidating CloudFront cache...
+      - aws cloudfront create-invalidation --distribution-id ECRP51AK9PYZS --paths "/*"
+      - echo Deployment completed successfully!
 artifacts:
   files:
     - '**/*'
   base-directory: dist
-
 cache:
   paths:
     - 'node_modules/**/*'
