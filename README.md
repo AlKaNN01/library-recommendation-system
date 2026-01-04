@@ -1,6 +1,97 @@
 # Library Recommendation System
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-CloudFront-blue?style=for-the-badge&logo=amazon-aws)](https://d24gnb6k7nrjcb.cloudfront.net)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-black?style=for-the-badge&logo=github)](https://github.com/AlKaNN01/library-recommendation-system)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](./LICENSE)
+[![AWS](https://img.shields.io/badge/AWS-Serverless-orange?style=for-the-badge&logo=amazon-aws)](https://aws.amazon.com)
+
 An AI-powered library book recommendation system built with React, TypeScript, Tailwind CSS, and AWS serverless architecture. This is a 4-week intensive project for CENG413 Software Quality Standards course.
+
+## 🌐 Live Application
+
+**Live URL**: [https://d24gnb6k7nrjcb.cloudfront.net](https://d24gnb6k7nrjcb.cloudfront.net)
+
+> **Note**: This is the live production deployment of the Library Recommendation System.
+
+## 🔗 API Endpoints
+
+### Base URL
+
+```
+https://YOUR-API-ID.execute-api.eu-north-1.amazonaws.com/dev
+```
+
+### Books API
+
+| Method   | Endpoint         | Description                | Auth Required |
+| -------- | ---------------- | -------------------------- | ------------- |
+| `GET`    | `/getBooks`      | Get all books from catalog | No            |
+| `GET`    | `/getBooks/{id}` | Get single book by ID      | No            |
+| `POST`   | `/books`         | Create new book            | Yes (Admin)   |
+| `PUT`    | `/books/{id}`    | Update existing book       | Yes (Admin)   |
+| `DELETE` | `/books/{id}`    | Delete book                | Yes (Admin)   |
+
+### Reading Lists API
+
+| Method   | Endpoint              | Description              | Auth Required |
+| -------- | --------------------- | ------------------------ | ------------- |
+| `GET`    | `/reading-lists`      | Get user's reading lists | Yes           |
+| `POST`   | `/reading-lists`      | Create new reading list  | Yes           |
+| `PUT`    | `/reading-lists/{id}` | Update reading list      | Yes           |
+| `DELETE` | `/reading-lists/{id}` | Delete reading list      | Yes           |
+
+### AI Recommendations API
+
+| Method | Endpoint           | Description                         | Auth Required |
+| ------ | ------------------ | ----------------------------------- | ------------- |
+| `POST` | `/recommendations` | Get AI-powered book recommendations | Yes           |
+
+### Reviews API (Future Implementation)
+
+| Method | Endpoint                  | Description            | Auth Required |
+| ------ | ------------------------- | ---------------------- | ------------- |
+| `GET`  | `/books/{id}/reviews`     | Get reviews for a book | No            |
+| `POST` | `/books/{bookId}/reviews` | Create new review      | Yes           |
+
+### Authentication
+
+All authenticated endpoints require a Bearer token in the Authorization header:
+
+```
+Authorization: Bearer <JWT_TOKEN_FROM_COGNITO>
+```
+
+### Request/Response Examples
+
+#### Get Books
+
+```bash
+curl -X GET https://YOUR-API-ID.execute-api.eu-north-1.amazonaws.com/dev/getBooks
+```
+
+#### Create Reading List
+
+```bash
+curl -X POST https://YOUR-API-ID.execute-api.eu-north-1.amazonaws.com/dev/reading-lists \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Favorites",
+    "description": "Books I love",
+    "bookIds": ["book-1", "book-2"]
+  }'
+```
+
+#### Get AI Recommendations
+
+```bash
+curl -X POST https://YOUR-API-ID.execute-api.eu-north-1.amazonaws.com/dev/recommendations \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "I love fantasy novels with magic systems"
+  }'
+```
 
 ## 🎯 Project Overview
 
@@ -27,6 +118,99 @@ This project provides a **complete frontend starter** with mock data and compreh
 - **Testing**: Vitest + React Testing Library setup
 - **Code Quality**: ESLint, Prettier, and strict TypeScript configuration
 
+## 🏗️ Architecture Overview
+
+The Library Recommendation System follows a modern serverless architecture pattern using AWS services:
+
+```mermaid
+graph TB
+    %% User Layer
+    User[👤 User] --> CF[☁️ CloudFront CDN]
+
+    %% Frontend Layer
+    CF --> S3[📦 S3 Static Website<br/>React + TypeScript]
+
+    %% API Layer
+    S3 --> APIG[🚪 API Gateway<br/>REST API Endpoints]
+
+    %% Authentication
+    S3 --> Cognito[🔐 Cognito User Pool<br/>Authentication & Authorization]
+    APIG --> Cognito
+
+    %% Lambda Functions
+    APIG --> L1[⚡ Get Books Lambda]
+    APIG --> L2[⚡ Get Book Lambda]
+    APIG --> L3[⚡ Create Book Lambda]
+    APIG --> L4[⚡ Reading Lists Lambda]
+    APIG --> L5[⚡ AI Recommendations Lambda]
+
+    %% Database Layer
+    L1 --> DDB1[🗄️ Books Table<br/>DynamoDB]
+    L2 --> DDB1
+    L3 --> DDB1
+    L4 --> DDB2[🗄️ Reading Lists Table<br/>DynamoDB]
+
+    %% AI Layer
+    L5 --> Bedrock[🤖 Amazon Bedrock<br/>Claude 3 Haiku Model]
+
+    %% Styling
+    classDef frontend fill:#e1f5fe
+    classDef api fill:#f3e5f5
+    classDef lambda fill:#fff3e0
+    classDef database fill:#e8f5e8
+    classDef ai fill:#fce4ec
+    classDef auth fill:#fff8e1
+
+    class User,CF,S3 frontend
+    class APIG api
+    class L1,L2,L3,L4,L5 lambda
+    class DDB1,DDB2 database
+    class Bedrock ai
+    class Cognito auth
+```
+
+### Architecture Components
+
+#### Frontend Layer
+
+- **CloudFront CDN**: Global content delivery network for fast loading
+- **S3 Static Website**: Hosts the React application built with Vite
+- **React + TypeScript**: Modern frontend with type safety
+
+#### API Layer
+
+- **API Gateway**: RESTful API endpoints with CORS configuration
+- **Lambda Functions**: Serverless compute for business logic
+  - `getBooks`: Retrieve all books from catalog
+  - `getBook`: Get single book details
+  - `createBook`: Add new books (admin only)
+  - `readingLists`: CRUD operations for user reading lists
+  - `recommendations`: AI-powered book suggestions
+
+#### Data Layer
+
+- **Books Table**: Stores book catalog (title, author, genre, rating, etc.)
+- **Reading Lists Table**: User-specific book collections and preferences
+
+#### Security & Authentication
+
+- **Cognito User Pool**: User registration, login, and JWT token management
+- **IAM Roles**: Fine-grained permissions for Lambda functions
+- **API Gateway Authorizers**: Protect endpoints with JWT validation
+
+#### AI Integration
+
+- **Amazon Bedrock**: Claude 3 Haiku model for intelligent book recommendations
+- **Prompt Engineering**: Contextual recommendations based on user preferences
+
+### Data Flow
+
+1. **User Authentication**: Users sign up/login through Cognito
+2. **API Requests**: Frontend makes authenticated requests to API Gateway
+3. **Lambda Processing**: Business logic processes requests and queries DynamoDB
+4. **AI Recommendations**: Bedrock generates personalized suggestions
+5. **Response Delivery**: Data flows back through API Gateway to frontend
+
 ## 📋 Prerequisites
 
 ### For Frontend Development (Week 1)
@@ -40,6 +224,101 @@ This project provides a **complete frontend starter** with mock data and compreh
 - **AWS Account**: Free Tier eligible
 - **AWS CLI**: Installed and configured
 - **Basic AWS Knowledge**: Lambda, DynamoDB, API Gateway concepts
+
+## 🚀 Setup Instructions
+
+### Local Development Setup
+
+#### 1. Clone the Repository
+
+```bash
+git clone <your-repository-url>
+cd library-recommendation-system
+```
+
+#### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+#### 3. Environment Configuration
+
+Create a `.env` file in the root directory:
+
+```bash
+cp .env.example .env
+```
+
+Update the `.env` file with your AWS configuration:
+
+```env
+# API Configuration
+VITE_API_BASE_URL=https://YOUR-API-ID.execute-api.eu-north-1.amazonaws.com/dev
+
+# AWS Configuration
+VITE_AWS_REGION=eu-north-1
+VITE_COGNITO_USER_POOL_ID=eu-north-1_XXXXXX
+VITE_COGNITO_CLIENT_ID=XXXXXXXXXXXXXXXXXXXXXXXXXX
+
+# Optional: Analytics
+VITE_ANALYTICS_ID=your-analytics-id
+```
+
+#### 4. Start Development Server
+
+```bash
+npm run dev
+```
+
+The application will be available at `http://localhost:5173`
+
+### Production Deployment
+
+#### 1. Build the Application
+
+```bash
+npm run build
+```
+
+#### 2. Deploy to AWS S3
+
+```bash
+# Create S3 bucket (replace with your bucket name)
+aws s3 mb s3://your-library-app-bucket
+
+# Upload build files
+aws s3 sync dist/ s3://your-library-app-bucket/ --delete
+
+# Configure bucket for static website hosting
+aws s3 website s3://your-library-app-bucket --index-document index.html --error-document index.html
+```
+
+#### 3. Setup CloudFront (Optional but Recommended)
+
+```bash
+# Create CloudFront distribution via AWS Console
+# Point origin to your S3 bucket
+# Configure custom error pages for SPA routing
+```
+
+### AWS Backend Setup
+
+Follow the detailed implementation guide in [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md) for:
+
+1. **Week 1**: AWS account setup and first Lambda function
+2. **Week 2**: DynamoDB tables and Books/Reading Lists APIs
+3. **Week 3**: Cognito authentication integration
+4. **Week 4**: AI recommendations with Bedrock and deployment
+
+### Verification Steps
+
+After setup, verify everything works:
+
+1. **Frontend**: Visit `http://localhost:5173` and browse books
+2. **API**: Test endpoints with curl or Postman
+3. **Authentication**: Try login/signup flows
+4. **AI Recommendations**: Test the recommendations page
 
 ## 🚀 Quick Start Guide
 
@@ -535,9 +814,9 @@ All API calls in `src/services/api.ts` are currently mocked. Students will imple
 After deploying your backend, update `.env`:
 
 ```env
-VITE_API_BASE_URL=https://YOUR-API-ID.execute-api.us-east-1.amazonaws.com/dev
-VITE_AWS_REGION=us-east-1
-VITE_COGNITO_USER_POOL_ID=us-east-1_XXXXXX
+VITE_API_BASE_URL=https://YOUR-API-ID.execute-api.eu-north-1.amazonaws.com/dev
+VITE_AWS_REGION=eu-north-1
+VITE_COGNITO_USER_POOL_ID=eu-north-1_XXXXXX
 VITE_COGNITO_CLIENT_ID=XXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
@@ -593,7 +872,7 @@ npm run build
 aws s3 sync dist/ s3://your-bucket-name/ --delete
 
 # Your site will be available at:
-# http://your-bucket-name.s3-website-us-east-1.amazonaws.com
+# http://your-bucket-name.s3-website-eu-north-1.amazonaws.com
 # or https://your-cloudfront-url.cloudfront.net
 ```
 
@@ -683,7 +962,37 @@ This is a student project for CENG413 Software Quality Standards course. Follow 
 
 ## 📄 License
 
-This project is part of an academic course at Istanbul Okan University.
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+
+## 🔗 Repository Information
+
+- **GitHub Repository**: [Library Recommendation System](https://github.com/AlKaNN01/library-recommendation-system)
+- **Live Demo**: [https://d24gnb6k7nrjcb.cloudfront.net](https://d24gnb6k7nrjcb.cloudfront.net)
+- **Architecture Diagram**: [ARCHITECTURE.md](./ARCHITECTURE.md)
+- **Documentation**: Comprehensive setup and implementation guides included
+
+### Repository Structure
+
+```
+library-recommendation-system/
+├── src/                    # React TypeScript source code
+├── infrastructure/         # AWS CDK infrastructure code
+├── public/                # Static assets and book covers
+├── docs/                  # Additional documentation
+├── ARCHITECTURE.md        # System architecture overview
+├── IMPLEMENTATION_GUIDE.md # Step-by-step AWS setup
+├── STUDENT_CHECKLIST.md   # Progress tracking
+├── LICENSE               # MIT License
+└── README.md            # This file
+```
+
+### Quick Links
+
+- 🚀 [Live Application](https://d24gnb6k7nrjcb.cloudfront.net)
+- 📖 [Implementation Guide](./IMPLEMENTATION_GUIDE.md)
+- 🏗️ [Architecture Overview](./ARCHITECTURE.md)
+- ✅ [Student Checklist](./STUDENT_CHECKLIST.md)
+- 📚 [Resources & Links](./RESOURCES.md)
 
 ---
 
