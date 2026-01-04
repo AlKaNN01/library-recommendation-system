@@ -15,10 +15,10 @@ phases:
   build:
     commands:
       - echo Building application...
-      - echo "VITE_API_BASE_URL=https://7g9wz71j86.execute-api.eu-north-1.amazonaws.com/prod" > .env.production
-      - echo "VITE_AWS_REGION=eu-north-1" >> .env.production
-      - echo "VITE_COGNITO_USER_POOL_ID=eu-north-1_CZrYHze0s" >> .env.production
-      - echo "VITE_COGNITO_CLIENT_ID=60fuqippfd87e6tj3cch51kf3s" >> .env.production
+      - export VITE_API_BASE_URL=https://7g9wz71j86.execute-api.eu-north-1.amazonaws.com/prod
+      - export VITE_AWS_REGION=eu-north-1
+      - export VITE_COGNITO_USER_POOL_ID=eu-north-1_CZrYHze0s
+      - export VITE_COGNITO_CLIENT_ID=60fuqippfd87e6tj3cch51kf3s
       - npm run build
   post_build:
     commands:
