@@ -52,8 +52,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       setUser({
         id: cognitoUser.userId,
-        email: cognitoUser.signInDetails?.loginId || userAttributes?.email || '',
-        name: userAttributes?.name || userAttributes?.email?.split('@')[0] || 'User',
+        email: cognitoUser.signInDetails?.loginId || String(userAttributes?.email || ''),
+        name:
+          String(userAttributes?.name || '') ||
+          String(userAttributes?.email || '').split('@')[0] ||
+          'User',
         role: 'user',
         createdAt: new Date().toISOString(),
       });
