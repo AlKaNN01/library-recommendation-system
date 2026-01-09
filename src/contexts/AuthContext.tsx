@@ -46,10 +46,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const cognitoUser = await getCurrentUser();
 
+      // Get user attributes from Cognito
+      const session = await fetchAuthSession();
+      const userAttributes = session.tokens?.idToken?.payload;
+
       setUser({
         id: cognitoUser.userId,
-        email: cognitoUser.signInDetails?.loginId || '',
-        name: cognitoUser.username,
+        email: cognitoUser.signInDetails?.loginId || userAttributes?.email || '',
+        name: userAttributes?.name || userAttributes?.email?.split('@')[0] || 'User',
         role: 'user',
         createdAt: new Date().toISOString(),
       });
